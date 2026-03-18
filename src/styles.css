@@ -1,0 +1,482 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg-dark: #1a1a1a;
+  --bg-panel: #242424;
+  --bg-input: #2d2d2d;
+  --border-color: #3a3a3a;
+  --text-primary: #e8e8e8;
+  --text-secondary: #9a9a9a;
+  --header-height: 44px;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== Header Bar ===== */
+.header-bar {
+  display: flex;
+  align-items: center;
+  height: var(--header-height);
+  background-color: var(--bg-panel);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 16px;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.panel-selector {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.right-selector {
+  justify-content: flex-end;
+}
+
+.provider-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  background-color: #555;
+  transition: background-color 0.2s;
+}
+
+.provider-select {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 24px 4px 8px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  transition: border-color 0.15s;
+}
+
+.provider-select:hover {
+  border-color: #666;
+}
+
+.provider-select:focus {
+  border-color: #888;
+}
+
+.provider-select option {
+  background: #2a2a2a;
+  color: var(--text-primary);
+}
+
+.refresh-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  -webkit-app-region: no-drag;
+}
+
+.refresh-btn:hover {
+  color: var(--text-primary);
+  border-color: #666;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.refresh-btn.spinning svg {
+  animation: spin 0.6s linear;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ===== Webviews Container ===== */
+.webviews-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.webview-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+webview {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: flex;
+}
+
+.h-divider {
+  width: 5px;
+  background-color: var(--border-color);
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background-color 0.15s;
+  position: relative;
+}
+
+.h-divider::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -3px;
+  right: -3px;
+  bottom: 0;
+}
+
+.h-divider:hover,
+.h-divider.dragging {
+  background-color: #666;
+}
+
+/* Vertical resizer between webviews and input */
+.v-resizer {
+  height: 5px;
+  background-color: var(--border-color);
+  cursor: ns-resize;
+  flex-shrink: 0;
+  position: relative;
+  transition: background-color 0.15s;
+}
+
+.v-resizer::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -3px;
+  bottom: -3px;
+}
+
+.v-resizer:hover,
+.v-resizer.dragging {
+  background-color: #666;
+}
+
+.webview-status {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.webview-status.show {
+  opacity: 1;
+}
+
+/* ===== Input Bar ===== */
+.input-bar {
+  background-color: var(--bg-panel);
+  padding: 10px 16px;
+  flex-shrink: 0;
+  height: 140px;
+  min-height: 80px;
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.input-bar-inner {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Target selector buttons */
+.target-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+  align-self: stretch;
+  justify-content: flex-end;
+  padding-bottom: 2px;
+}
+
+.target-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.target-btn:hover {
+  border-color: #555;
+  color: var(--text-primary);
+}
+
+.target-btn.active {
+  border-color: #666;
+  background-color: #3a3a3a;
+  color: var(--text-primary);
+}
+
+/* Input wrapper */
+.input-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 8px 10px;
+  transition: border-color 0.15s;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.input-wrapper:focus-within {
+  border-color: #555;
+}
+
+#message-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  line-height: 1.5;
+  overflow-y: auto;
+  height: 100%;
+}
+
+#message-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.send-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 2px 4px;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 6px;
+  margin-left: 6px;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  padding-bottom: 2px;
+}
+
+.send-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ===== Notification ===== */
+.notification {
+  margin-top: 6px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.notification.hidden {
+  display: none;
+}
+
+.notification.success {
+  background: rgba(16, 163, 127, 0.2);
+  color: #10a37f;
+  border: 1px solid rgba(16, 163, 127, 0.3);
+}
+
+.notification.error {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.notification.info {
+  background: rgba(120, 120, 120, 0.2);
+  color: #aaa;
+  border: 1px solid rgba(120, 120, 120, 0.3);
+}
+
+/* ===== Attachment Button ===== */
+.attach-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 2px 6px 2px 2px;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 6px;
+  margin-right: 2px;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  padding-bottom: 2px;
+}
+
+.attach-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.attach-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ===== Attachment Preview Row ===== */
+.attachment-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 4px 2px;
+  flex-shrink: 0;
+}
+
+.attachment-preview.hidden {
+  display: none;
+}
+
+.attachment-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 3px 6px 3px 4px;
+  font-size: 12px;
+  color: var(--text-primary);
+  max-width: 160px;
+  position: relative;
+  transition: border-color 0.15s;
+}
+
+.attachment-chip:hover {
+  border-color: #666;
+}
+
+.attachment-chip img {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.attachment-chip .chip-icon {
+  width: 28px;
+  height: 28px;
+  background: rgba(120,120,120,0.15);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 15px;
+}
+
+.attachment-chip .chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  max-width: 90px;
+}
+
+.attachment-chip .chip-remove {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 0;
+  margin-left: 2px;
+  display: flex;
+  align-items: center;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.attachment-chip .chip-remove:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
