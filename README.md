@@ -2,7 +2,8 @@
 
 双重 AI 对话助手 - 在同一个窗口中并排对比不同的 AI 模型。
 
-![App Screenshot](src/assets/screenshot.png) <!-- Note: User can replace this with a real screenshot later -->
+<img width="1386" height="893" alt="image" src="https://github.com/user-attachments/assets/16f34087-0e6a-4e08-beae-98a64e6cb56d" />
+
 
 ## 项目功能
 
