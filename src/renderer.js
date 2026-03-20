@@ -11,13 +11,22 @@ const PROVIDERS = {
       '#chat-input',
       'div[contenteditable="true"]',
       'textarea'
-    ])
+    ]),
+    sidebarToggleSelectors: [
+      'button[aria-label="Hide sidebar"]',
+      'button[aria-label="隐藏侧边栏"]',
+      '.ds-sidebar-toggle'
+    ]
   },
   chatgpt: {
     name: 'ChatGPT',
     url: 'https://chatgpt.com',
     color: '#10a37f',
-    buildInjection: buildChatGPTInjection
+    buildInjection: buildChatGPTInjection,
+    sidebarToggleSelectors: [
+      'button[aria-label="Hide sidebar"]',
+      'button[aria-label="隐藏侧边栏"]'
+    ]
   },
   doubao: {
     name: '豆包',
@@ -29,7 +38,12 @@ const PROVIDERS = {
       'textarea.w-full',
       'div[contenteditable="true"]',
       'textarea'
-    ])
+    ]),
+    sidebarToggleSelectors: [
+      'button.rounded-dbx-sm',
+      '[data-testid="chat_sidebar_collapse_button"]',
+      'div[class*="sidebar-container"] button'
+    ]
   },
   minimax: {
     name: 'MiniMax',
@@ -50,7 +64,66 @@ const PROVIDERS = {
       'textarea[placeholder*="消息"]',
       'div[contenteditable="true"]',
       'textarea'
-    ])
+    ]),
+    sidebarToggleSelectors: [
+      '[data-testid*="sidebar-toggle"]',
+      'button[class*="sidebar-toggle"]'
+    ]
+  }
+}
+
+// === Sidebar Auto-Hide Logic ===
+async function autoHideSidebar(webview, providerKey) {
+  const provider = PROVIDERS[providerKey]
+  if (!provider || !provider.sidebarToggleSelectors) return
+
+  const escapedSelectors = JSON.stringify(provider.sidebarToggleSelectors)
+  const script = `
+    (function() {
+      const selectors = ${escapedSelectors}
+      const providerKey = "${providerKey}"
+      let attempts = 0
+      const maxAttempts = 15 // Increased attempts for slower platforms
+      
+      const interval = setInterval(() => {
+        attempts++
+        for (const sel of selectors) {
+          try {
+            const btn = document.querySelector(sel)
+            if (btn && btn.offsetParent !== null) {
+              let shouldClick = true
+              
+              // Provider-specific logic to ensure we are COLLAPSING, not expanding
+              if (providerKey === 'doubao') {
+                // For Doubao, if the button is at the far left (approx 20px), it's already collapsed.
+                // If it's further right (approx 200px+), it's expanded.
+                const rect = btn.getBoundingClientRect()
+                if (rect.left < 100) shouldClick = false
+              } else if (providerKey === 'chatgpt' || providerKey === 'deepseek') {
+                // If it already says 'Show' or '显示', don't click it
+                const label = btn.getAttribute('aria-label') || ''
+                if (label.includes('Show') || label.includes('显示') || label.includes('展开')) {
+                  shouldClick = false
+                }
+              }
+              
+              if (shouldClick) {
+                btn.click()
+              }
+              
+              clearInterval(interval)
+              return
+            }
+          } catch(e) {}
+        }
+        if (attempts >= maxAttempts) clearInterval(interval)
+      }, 500)
+    })()
+  `
+  try {
+    await webview.executeJavaScript(script)
+  } catch (err) {
+    console.error('Failed to hide sidebar:', err)
   }
 }
 
@@ -64,7 +137,6 @@ const attachmentPreview = document.getElementById('attachment-preview')
 const notification = document.getElementById('notification')
 const leftStatus = document.getElementById('left-status')
 const rightStatus = document.getElementById('right-status')
-const targetBtns = document.querySelectorAll('.target-btn')
 const leftSelect = document.getElementById('left-select')
 const rightSelect = document.getElementById('right-select')
 const leftDot = document.getElementById('left-dot')
@@ -77,8 +149,9 @@ const hDivider = document.getElementById('h-divider')
 const vResizer = document.getElementById('v-resizer')
 const inputBar = document.getElementById('input-bar')
 const webviewsContainer = document.querySelector('.webviews-container')
+const newChatBtn = document.getElementById('new-chat-btn')
 
-let currentTarget = 'both'
+const currentTarget = 'both'
 let isSending = false
 
 // === Attachment State ===
@@ -212,15 +285,6 @@ rightSelect.addEventListener('change', () => {
   }
 })
 
-// === Target Selector ===
-targetBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    targetBtns.forEach(b => b.classList.remove('active'))
-    btn.classList.add('active')
-    currentTarget = btn.dataset.target
-  })
-})
-
 // === Keyboard: Enter to send, Shift+Enter for newline ===
 messageInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
@@ -230,6 +294,42 @@ messageInput.addEventListener('keydown', (e) => {
 })
 
 sendBtn.addEventListener('click', sendMessage)
+
+// === New Conversation ===
+newChatBtn.addEventListener('click', () => {
+  if (isSending) return
+
+  const affected = []
+
+  if (currentTarget === 'both' || currentTarget === 'left') {
+    const provider = PROVIDERS[leftSelect.value]
+    if (provider) {
+      leftWebview.src = provider.url
+      showStatus(leftStatus, '↻ 新对话')
+      affected.push(provider.name)
+    }
+  }
+
+  if (currentTarget === 'both' || currentTarget === 'right') {
+    const provider = PROVIDERS[rightSelect.value]
+    if (provider) {
+      rightWebview.src = provider.url
+      showStatus(rightStatus, '↻ 新对话')
+      affected.push(provider.name)
+    }
+  }
+
+  // Clear attachments and input
+  messageInput.value = ''
+  attachments = []
+  renderAttachmentPreview()
+
+  if (affected.length > 0) {
+    showNotification(`已开启新对话: ${affected.join(', ')}`, 'success', 2500)
+  }
+
+  messageInput.focus()
+})
 
 // === Disable webview pointer events during drag ===
 function setWebviewPointerEvents(enabled) {
@@ -572,13 +672,19 @@ async function sendMessage() {
 
 // === Webview Loading Status ===
 leftWebview.addEventListener('did-start-loading', () => showStatus(leftStatus, '加载中...', 30000))
-leftWebview.addEventListener('did-finish-load', () => leftStatus.classList.remove('show'))
+leftWebview.addEventListener('did-finish-load', () => {
+  leftStatus.classList.remove('show')
+  autoHideSidebar(leftWebview, leftSelect.value)
+})
 leftWebview.addEventListener('did-fail-load', (e) => {
   if (e.errorCode !== -3) showStatus(leftStatus, '加载失败', 5000)
 })
 
 rightWebview.addEventListener('did-start-loading', () => showStatus(rightStatus, '加载中...', 30000))
-rightWebview.addEventListener('did-finish-load', () => rightStatus.classList.remove('show'))
+rightWebview.addEventListener('did-finish-load', () => {
+  rightStatus.classList.remove('show')
+  autoHideSidebar(rightWebview, rightSelect.value)
+})
 rightWebview.addEventListener('did-fail-load', (e) => {
   if (e.errorCode !== -3) showStatus(rightStatus, '加载失败', 5000)
 })
