@@ -69,6 +69,16 @@ const PROVIDERS = {
       '[data-testid*="sidebar-toggle"]',
       'button[class*="sidebar-toggle"]'
     ]
+  },
+  mimo: {
+    name: '小米MiMo',
+    url: 'https://aistudio.xiaomimimo.com/#/',
+    color: '#ff6900',
+    buildInjection: (msg) => buildGenericInjection(msg, [
+      'div[contenteditable="true"]',
+      'textarea[placeholder*="输入"]',
+      'textarea'
+    ])
   }
 }
 
